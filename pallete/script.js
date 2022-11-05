@@ -397,22 +397,16 @@ function redraw() {
     picker.draw(ctx);
 }
 
-function update() {
-    state.closest = closestPallete(state.color);
-}
 canvas.addEventListener('mousemove', (e) => {
     picker.mouseMove(e);
-    update();
     redraw();
 });
 canvas.addEventListener('mousedown', (e) => {
     picker.mouseDown(e);
-    update();
     redraw();
 });
 canvas.addEventListener('mouseup', (e) => {
     picker.mouseUp(e);
-    update();
     redraw();
 });
 canvas.addEventListener('drag', (e) => {
