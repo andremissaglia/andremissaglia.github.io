@@ -216,6 +216,9 @@ class SquarePicker {
     updateValue(e) {
         this.ballY = (this.bounds.height + this.bounds.y - e.offsetY) / this.bounds.height;
         this.ballX = (e.offsetX - this.bounds.x) / this.bounds.width;
+        this.ballX = Math.max(0, Math.min(1, this.ballX));
+        this.ballY = Math.max(0, Math.min(1, this.ballY));
+
         const s = Math.round(this.ballX * 100);
         const l = Math.round(this.ballY * 100);
         state.slPicked(s, l);
@@ -226,20 +229,6 @@ class Voronoi {
     constructor(bounds) {
         this.bounds = bounds;
         this.drawnAtHue = -1;
-        // this.palette = {
-        //     "cool_winter": [166, 206, 227, 50],
-        //     "autumn": [31, 120, 180, 50],
-        //     "spring": [178, 223, 138, 50],
-        //     "summer": [51, 160, 44, 50],
-        //     "clear_winter": [251, 154, 153, 50],
-        //     "1autumn": [227, 26, 28, 50],
-        //     "1spring": [253, 191, 111, 50],
-        //     "1summer": [255, 127, 0, 50],
-        //     "deep_winter": [202, 178, 214, 50],
-        //     "2autumn": [255, 255, 153, 50],
-        //     "2spring": [177, 89, 40, 50],
-        //     "2summer": [206, 61, 154, 50],
-        // }
         this.palette = {
             "cool_winter": 1,
             "autumn": 2,
@@ -297,7 +286,7 @@ class Voronoi {
     }
     calculateImageDataFromRegions(regions) {
         const imageData = this.tempCanvasContext.createImageData(this.bounds.width, this.bounds.height);
-        
+
         for (let x = 0; x < this.bounds.width; x++) {
             for (let y = 0; y < this.bounds.height; y++) {
                 const current = regions[x + y * this.bounds.width];
@@ -403,6 +392,7 @@ class Slider {
     }
     updateValue(e) {
         this.value = (this.bounds.height + this.bounds.y - e.offsetY) / this.bounds.height;
+        this.value = Math.max(0, Math.min(1, this.value));
         const h = Math.round(this.value * 359);
         state.huePicked(h);
     }
