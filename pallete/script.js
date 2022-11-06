@@ -56,16 +56,39 @@ class Color {
             l: l * 100
         };
     }
-    
+
 }
 
 const pallete = {
-    "winter": [
-        Color.fromHex("42687C"),
-        Color.fromHex("84A5B8"),
-        Color.fromHex("B3DAF1"),
-        Color.fromHex("CBCBCB"),
-        Color.fromHex("707571"),
+    "cool_winter": [
+        Color.fromHex("F4ED83"),
+        Color.fromHex("2C816A"),
+        Color.fromHex("2F509F"),
+        Color.fromHex("8D4366"),
+        Color.fromHex("AB55A0"),
+        Color.fromHex("4E3B7B"),
+        Color.fromHex("333B5F"),
+        Color.fromHex("2B2C2E"),
+    ],
+    "clear_winter": [
+        Color.fromHex("F4F170"),
+        Color.fromHex("2B8F4F"),
+        Color.fromHex("3B8CCB"),
+        Color.fromHex("84343D"),
+        Color.fromHex("AB55A0"),
+        Color.fromHex("825CA5"),
+        Color.fromHex("374284"),
+        Color.fromHex("28292B"),
+    ],
+    "deep_winter": [
+        Color.fromHex("D2DE3C"),
+        Color.fromHex("347847"),
+        Color.fromHex("25A3B9"),
+        Color.fromHex("9C373D"),
+        Color.fromHex("C03A52"),
+        Color.fromHex("764B9B"),
+        Color.fromHex("373F7E"),
+        Color.fromHex("2B2C2E"),
     ],
     "spring": [
         Color.fromHex("F3A8BC"),
@@ -108,7 +131,7 @@ function closestPallete(color) {
 
 class State {
     constructor() {
-        this.color = new Color(0, 0, 0);
+        this.color = new Color(180, 50, 50);
         this.closest = closestPallete(this.color);
         this.showVoronoi = true;
     }
@@ -203,24 +226,40 @@ class Voronoi {
     constructor(bounds) {
         this.bounds = bounds;
         this.drawnAtHue = -1;
+        // this.palette = {
+        //     "cool_winter": [166, 206, 227, 50],
+        //     "autumn": [31, 120, 180, 50],
+        //     "spring": [178, 223, 138, 50],
+        //     "summer": [51, 160, 44, 50],
+        //     "clear_winter": [251, 154, 153, 50],
+        //     "1autumn": [227, 26, 28, 50],
+        //     "1spring": [253, 191, 111, 50],
+        //     "1summer": [255, 127, 0, 50],
+        //     "deep_winter": [202, 178, 214, 50],
+        //     "2autumn": [255, 255, 153, 50],
+        //     "2spring": [177, 89, 40, 50],
+        //     "2summer": [206, 61, 154, 50],
+        // }
         this.palette = {
-            "winter": [166, 206, 227, 50],
-            "autumn": [31, 120, 180, 50],
-            "spring": [178, 223, 138, 50],
-            "summer": [51, 160, 44, 50],
-            "1winter": [251, 154, 153, 50],
-            "1autumn": [227, 26, 28, 50],
-            "1spring": [253, 191, 111, 50],
-            "1summer": [255, 127, 0, 50],
-            "2winter": [202, 178, 214, 50],
-            "2autumn": [255, 255, 153, 50],
-            "2spring": [177, 89, 40, 50],
-            "2summer": [206, 61, 154, 50],
+            "cool_winter": 1,
+            "autumn": 2,
+            "spring": 3,
+            "summer": 4,
+            "clear_winter": 5,
+            "1autumn": 6,
+            "1spring": 7,
+            "1summer": 8,
+            "deep_winter": 9,
+            "2autumn": 10,
+            "2spring": 11,
+            "2summer": 12,
         }
 
         this.tempCanvas = document.createElement("canvas");
         this.tempCanvas.width = this.bounds.width;
         this.tempCanvas.height = this.bounds.height;
+        this.tempCanvasContext = this.tempCanvas.getContext("2d");
+        this.imageDataCache = {};
     }
     draw(ctx) {
         if (this.drawnAtHue !== state.color.h) {
@@ -230,23 +269,66 @@ class Voronoi {
         ctx.drawImage(this.tempCanvas, this.bounds.x, this.bounds.y);
     }
     drawVoronoi() {
-        var ctx2 = this.tempCanvas.getContext("2d");
-        const imageData = ctx2.createImageData(this.bounds.width, this.bounds.height);
+        const imageData = this.getImageData(state.color.h);
+        this.tempCanvasContext.putImageData(imageData, 0, 0);
+    }
+    getImageData(hue) {
+        if (!this.imageDataCache[hue]) {
+            this.imageDataCache[hue] = this.calculateImageDataForHue(hue);
+        }
+        return this.imageDataCache[hue];
+    }
+    calculateImageDataForHue(hue) {
+        const regions = this.makeRegions(hue);
+        return this.calculateImageDataFromRegions(regions);
+    }
+    makeRegions(hue) {
+        const regions = new Array(this.bounds.width * this.bounds.height);
         for (let x = 0; x < this.bounds.width; x++) {
             for (let y = 0; y < this.bounds.height; y++) {
                 const s = Math.round(x / this.bounds.width * 100);
                 const l = Math.round((1 - y / this.bounds.height) * 100);
-                const color = this.getColor(state.color.h, s, l);
-                const index = (x + y * this.bounds.width) * 4;
-                imageData.data[index] = color[0];
-                imageData.data[index + 1] = color[1];
-                imageData.data[index + 2] = color[2];
-                imageData.data[index + 3] = color[3];
+                const color = this.getRegion(hue, s, l);
+                const index = (x + y * this.bounds.width);
+                regions[index] = color;
             }
         }
-        ctx2.putImageData(imageData, 0, 0);
+        return regions;
     }
-    getColor(h, s, l) {
+    calculateImageDataFromRegions(regions) {
+        const imageData = this.tempCanvasContext.createImageData(this.bounds.width, this.bounds.height);
+        
+        for (let x = 0; x < this.bounds.width; x++) {
+            for (let y = 0; y < this.bounds.height; y++) {
+                const current = regions[x + y * this.bounds.width];
+                if (x > 0 && regions[x - 1 + y * this.bounds.width] !== current) {
+                    this.drawBorder(imageData, x, y);
+                    continue;
+                }
+                if (y > 0 && regions[x + (y - 1) * this.bounds.width] !== current) {
+                    this.drawBorder(imageData, x, y);
+                    continue;
+                }
+                if (x < this.bounds.width - 1 && regions[x + 1 + y * this.bounds.width] !== current) {
+                    this.drawBorder(imageData, x, y);
+                    continue;
+                }
+                if (y < this.bounds.height - 1 && regions[x + (y + 1) * this.bounds.width] !== current) {
+                    this.drawBorder(imageData, x, y);
+                    continue;
+                }
+            }
+        }
+        return imageData;
+    }
+    drawBorder(imageData, x, y) {
+        const index = (x + y * this.bounds.width) * 4;
+        imageData.data[index] = 0;
+        imageData.data[index + 1] = 0;
+        imageData.data[index + 2] = 0;
+        imageData.data[index + 3] = 255;
+    }
+    getRegion(h, s, l) {
         const color = new Color(h, s, l);
         const closest = closestPallete(color);
         return this.palette[closest];
